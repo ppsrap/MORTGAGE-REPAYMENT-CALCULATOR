@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .container {
+        width: 1440px;
+        height: auto;
+        margin: auto;
+        padding: 20px;
+      }
+    </style>
+    <link href="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.13/theme-chalk/index.min.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="container">
+        <el-form ref="form" label-width="120px">
+          <el-form-item label="Total Amount (ten thousand):" >
+            <el-input v-model="total"></el-input>
+          </el-form-item>
+
+          <el-form-item label="Interest Rate (%):">
+            <el-input v-model="rate"></el-input>
+          </el-form-item>
+
+          <el-form-item label="Term (years):">
+            <el-input v-model="year"></el-input>
+          </el-form-item>
+
+          <el-form-item label="Monthly Payment:">
+            <el-input v-model="result"></el-input>
+          </el-form-item>
+
+          <el-form-item label="Total Repayment:">
+            <el-input v-model="total_er"></el-input>
+          </el-form-item>
+
+          <el-form-item label="Total Interest:">
+            <el-input v-model="total_lixi"></el-input>
+          </el-form-item>
+
+          <el-form-item label="Decreasing Amount:" :style="isCapital ? 'opacity:1' :'opacity:0'">
+            <el-input v-model="decAmount"></el-input>
+          </el-form-item>
+        </el-form>
+
+        <div class="calc-btn">
+          <el-button @click="compontedBX">Calculate Equal Principal and Interest</el-button>
+          <el-button @click="compontedBJ">Calculate Equal Principal</el-button>
+        </div>
+
+        <div class="his-block">
+          <div style="margin: 10px; text-align: center">
+            <el-tag type="success">Summary Information</el-tag>
+          </div>
+
+          <el-card class="box-card">
+            <el-table :data="recordList" border style="width: 100%">
+              <el-table-column prop="total_er" label="Total Repayment"> </el-table-column>
+              <el-table-column prop="total_lixi" label="Total Interest"> </el-table-column>
+              <el-table-column prop="rate" label="Interest Rate"> </el-table-column>
+              <el-table-column prop="type" label="Type">
+                <template slot-scope="scope"> {{scope.row.type > 1 ? 'Equal Principal' : 'Equal Principal and Interest'}} </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </div>
+
+        <div style="margin: 10px; text-align: center">
+          <el-tag type="success">Repayment Information</el-tag>
+        </div>
+        <el-card class="box-card">
+          <el-table :data="history_data" border style="width: 100%">
+            <el-table-column prop="month" label="Month" width="80px"> </el-table-column>
+            <el-table-column prop="monthPay" label="Monthly Payment"> </el-table-column>
+            <el-table-column prop="lastPay" label="Remaining Loan"> </el-table-column>
+          </el-table>
+        </el-card>
+      </div>
+    </div>
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.6.10/vue.common.dev.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.13/index.min.js"></script>
+    <script>
+      var vm = new Vue({
+        el: '#app',
+        data() {
+          return {
+            total: 10,
+            rate: 4.9,
+            year: 10,
+            result: '',
+            list: [],
+            total_lixi: '',
+            total_er: '',
+            // Decreasing Amount
+            decAmount: '',
+            isCapital: false,
+            recordList: [],
+          }
+        },
+        computed: {
+          c_total() {
+            return this.total * 10000
+          },
+          c_rate() {
+            return this.rate / 100 / 12
+          },
+          c_mouths() {
+            return this.year * 12
+          },
+          history_data() {
+            console.log(this.list, 'list')
+            return this.list.map((m, inx) => {
+              return {
+                month: inx + 1,
+                monthPay: m.res,
+                lastPay: this.filterSmallMoney(m.yu),
+              }
+            })
+          },
+        },
+        methods: {
+          //  Equal Principal and Interest  Monthly Payment = [Loan Principal × Monthly Interest Rate × (1 + Monthly Interest Rate) ^ Number of Repayment Months] / [(1 + Monthly Interest Rate) ^ Number of Repayment Months - 1]
+
+          //  Monthly Interest Payment = Loan Principal × Monthly Interest Rate × [(1 + Monthly Interest Rate) ^ Number of Repayment Months - (1 + Monthly Interest Rate) ^ (Repayment Month Serial Number - 1)] / [(1 + Monthly Interest Rate) ^ Number of Repayment Months - 1]
+
+          //  Monthly Principal Payment = Loan Principal × Monthly Interest Rate × (1 + Monthly Interest Rate) ^ (Repayment Month Serial Number - 1) / [(1 + Monthly Interest Rate) ^ Number of Repayment Months - 1]
+
+          //  Total Interest = Number of Repayment Months × Monthly Payment - Loan Principal
+
+          compontedBX() {
+            this.isCapital = false
+            this.clearList()
+            // Monthly Payment, Loan Principal, Monthly Interest Rate, Number of Repayment Months (e.g., 10 years is 10 * 12 = 120 months)
+            let result = (this.c_total * this.c_rate * Math.pow(1 + this.c_rate, this.c_mouths)) / (Math.pow(1 + this.c_rate, this.c_mouths) - 1)
+
+            this.result = result.toFixed(2)
+            let total_rate = result.toFixed(2) * this.c_mouths
+            for (let i = 1; i <= this.c_mouths; i++) {
+              this.list.push({
+                res: result.toFixed(2),
+                yu: (total_rate - result.toFixed(2) * i).toFixed(2),
+              })
+            }
+            // Total Interest
+            this.total_lixi = (this.c_mouths * result - this.c_total).toFixed(2)
+            this.total_er = (Number(this.total_lixi) + Number(this.c_total)).toFixed(2)
+            this.splitSmallMoney()
+
+            // Record Summary
+            const data = {
+              total_er: this.total_er,
+              total_lixi: this.total_lixi,
+              rate: this.rate,
+              type: 1, // 1: Equal Principal and Interest, 2: Equal Principal
+            }
+            this.recordList.push(data)
+          },
+
+          // Equal Principal Calculation Formula: Monthly Payment = (Principal / Number of Repayment Months) + (Principal - Accumulated Repaid Principal) × Monthly Interest Rate
+
+          // Monthly Principal Payment = Loan Principal / Number of Repayment Months
+
+          // Monthly Interest Payment = Remaining Principal × Monthly Interest Rate = (Loan Principal - Accumulated Repaid Principal) × Monthly Interest Rate
+
+          // Monthly Decreasing Amount = Monthly Principal Payment × Monthly Interest Rate = Loan Principal / Number of Repayment Months × Monthly Interest Rate
+
+          // Total Interest = (Number of Repayment Months + 1) × Total Loan Amount × Monthly Interest Rate / 2
+          compontedBJ() {
+            this.isCapital = true
+            this.clearList()
+            // Monthly Payment
+            let res
+            // Accumulated Repaid Principal
+            let yhbj = 0
+            // Accumulated Repaid Principal and Interest
+            let yhbx = 0
+            // Loan Principal, Number of Repayment Months, Monthly Interest Rate
+            let total = this.c_total,
+              mouths = this.c_mouths,
+              rate = this.c_rate
+            res = total / mouths + (total - yhbj) * rate
+            res = res.toFixed(2)
+            yhbx = res + yhbx
+            this.result = res
+            this.total_lixi = ((mouths + 1) * total * rate) / 2
+            this.total_er = this.total_lixi + this.c_total
+            this.list.push({ res: res, yu: (this.total_er - yhbx).toFixed(2) })
+            this.decAmount = ((total / mouths) * rate).toFixed(2)
+            for (let i = 1; i <= mouths; i++) {
+              yhbj = (total / mouths) * i
+              res = total / mouths + (total - yhbj) * rate
+              res = res.toFixed(2)
+              yhbx = Number(res) + Number(yhbx)
+              this.list.push({
+                res: res,
+                yu: (this.total_er - yhbx).toFixed(2),
+              })
+            }
+            this.splitSmallMoney()
+            // Record Summary
+            const data = {
+              total_er: this.total_er,
+              total_lixi: this.total_lixi,
+              rate: this.rate,
+              type: 2, // 1: Equal Principal and Interest, 2: Equal Principal
+            }
+            this.recordList.push(data)
+          },
+
+          clearList() {
+            this.list = []
+            this.decAmount = ''
+          },
+
+          splitSmallMoney() {
+            // Handling the issue of additional items due to very small final repayment amounts
+            this.list = this.list.splice(0, this.year * 12)
+          },
+
+          filterSmallMoney(m) {
+            if (m < 1) return 0
+            return m
+          },
+        },
+      })
+    </script>
+  </body>
+</html>
